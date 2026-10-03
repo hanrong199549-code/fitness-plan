@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="manifest" href="./manifest.webmanifest"><title>我的健身计划</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}
+.app{max-width:520px;margin:auto;min-height:100vh;background:#f8fafc;padding-bottom:84px}
+header{background:#111827;color:white;padding:24px 18px 20px;border-radius:0 0 24px 24px}h1{font-size:25px;margin:0 0 8px}.sub{opacity:.72;font-size:13px}
+.progress{margin-top:18px;background:#374151;height:9px;border-radius:9px;overflow:hidden}.bar{height:100%;background:#fff;transition:.25s}
+.card{background:white;margin:12px;border-radius:18px;padding:15px;box-shadow:0 2px 10px #0000000a}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.section{font-size:12px;color:#6b7280;font-weight:700;margin:18px 14px 8px}
+.exercise{border:1px solid #e5e7eb;border-radius:15px;padding:13px;margin-bottom:10px}.exercise.done{background:#f0fdf4;border-color:#bbf7d0}
+.title{font-weight:700}.meta{font-size:12px;color:#6b7280;margin-top:5px}.sets{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.set{border:0;border-radius:10px;background:#eef2ff;padding:9px 12px;font-weight:700}.set.done{background:#111827;color:white}
+input{width:76px;padding:8px;border:1px solid #d1d5db;border-radius:9px}button{font:inherit;cursor:pointer}
+.primary{width:100%;padding:13px;border:0;border-radius:12px;background:#111827;color:#fff;font-weight:700}
+.timer{font-size:30px;font-weight:800;text-align:center;padding:8px}.small{font-size:12px;color:#6b7280}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);background:#fff;border-top:1px solid #e5e7eb;display:flex;padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:10}
+nav button{flex:1;border:0;background:none;padding:8px 2px;color:#6b7280;font-size:12px}nav button.active{color:#111827;font-weight:800}.stat{font-size:24px;font-weight:800}.pill{padding:6px 9px;border-radius:99px;background:#f3f4f6;font-size:12px}
+</style></head><body><div class="app" id="app"></div>
+<script>
+const PLAN={"program": "12周三分化增肌计划", "cycle": ["push", "legs", "pull", "rest", "push", "legs", "pull"], "days": {"push": {"name": "推｜胸肩三头", "warmup": ["肩部环绕 2分钟", "弹力带拉伸 2分钟", "轻重量热身组 1–2组"], "exercises": [["哑铃卧推", 3, 8, 12, "90秒"], ["上斜哑铃卧推", 2, 10, 12, "90秒"], ["哑铃侧平举", 3, 12, 15, "60秒"], ["哑铃肩推", 2, 8, 12, "90秒"], ["三头训练", 2, 10, 15, "60秒"]], "posture": ["墙天使 2×12", "弹力带拉开 2×15"], "stretch": ["胸部拉伸 30秒×2", "肩部拉伸 30秒×2", "三头拉伸 30秒×2"]}, "legs": {"name": "腿｜腿臀核心", "warmup": ["徒手深蹲 2×15", "髋关节活动 2分钟", "轻重量热身组 1–2组"], "exercises": [["腿举/杠铃深蹲", 3, 8, 12, "120秒"], ["腿屈伸", 2, 10, 15, "60秒"], ["腿弯举/罗马尼亚硬拉", 3, 10, 15, "90秒"], ["臀推", 2, 8, 12, "90秒"], ["提踵", 3, 12, 20, "60秒"], ["核心训练", 2, 12, 15, "60秒"]], "posture": ["臀桥 2×15", "死虫 2×10/侧"], "stretch": ["股四头肌拉伸 30秒×2", "腿后侧拉伸 30秒×2", "臀部拉伸 30秒×2"]}, "pull": {"name": "拉｜背二头", "warmup": ["肩胛引体/悬垂 2组", "弹力带下拉 2×15", "轻重量热身组 1–2组"], "exercises": [["引体向上/高位下拉", 3, 6, 12, "120秒"], ["坐姿划船/单臂哑铃划船", 3, 8, 12, "90秒"], ["胸托划船", 2, 10, 12, "90秒"], ["反向飞鸟", 2, 12, 15, "60秒"], ["哑铃弯举", 2, 10, 15, "60秒"], ["锤式弯举", 2, 10, 15, "60秒"]], "posture": ["面拉 2×15", "墙天使 2×12"], "stretch": ["背阔肌拉伸 30秒×2", "二头拉伸 30秒×2", "肩后束拉伸 30秒×2"]}}};
+const KEY="fitness_v2";
+let state=JSON.parse(localStorage.getItem(KEY)||"null")||{logs:{},weights:{},tab:"today"};
+const esc=s=>String(s).replaceAll("'","&#39;");
+function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function dateKey(){return new Date().toISOString().slice(0,10)}
+function dayIndex(){return (new Date().getDay()+6)%7}
+function todayType(){return PLAN.cycle[dayIndex()]}
+function ensureLog(){let k=dateKey();if(!state.logs[k])state.logs[k]={type:todayType(),sets:{}};return state.logs[k]}
+function completedCount(){let l=ensureLog(),total=0,done=0;if(l.type==="rest")return[0,0];for(const e of PLAN.days[l.type].exercises){total+=e[1];for(let i=0;i<e[1];i++)if(l.sets[e[0]+"-"+i])done++}return[done,total]}
+function toggle(name,i){let l=ensureLog(),k=name+"-"+i;l.sets[k]=!l.sets[k];save()}
+function timer(sec){clearInterval(window.t);let end=Date.now()+sec*1000;window.t=setInterval(()=>{let left=Math.max(0,Math.ceil((end-Date.now())/1000));let el=document.getElementById("timer");if(el)el.textContent=Math.floor(left/60)+":"+String(left%60).padStart(2,"0");if(!left){clearInterval(window.t);navigator.vibrate?.(200)}},250)}
+function nav(active){return `<nav><button class="${active==="today"?"active":""}" onclick="state.tab='today';render()">今日</button><button class="${active==="plan"?"active":""}" onclick="state.tab='plan';render()">计划</button><button class="${active==="stats"?"active":""}" onclick="state.tab='stats';render()">数据</button></nav>`}
+function renderToday(){
+let l=ensureLog(),type=l.type,name=type==="rest"?"休息 / 恢复":PLAN.days[type].name,[done,total]=completedCount(),pct=total?Math.round(done/total*100):100;
+let ex=type==="rest"?[]:PLAN.days[type].exercises;
+document.getElementById("app").innerHTML=`<header><div class="sub">我的增肌计划 · ${dateKey()}</div><h1>${name}</h1><div class="row"><span>${done}/${total} 组完成</span><b>${pct}%</b></div><div class="progress"><div class="bar" style="width:${pct}%"></div></div></header>
+<div class="section">今日热身</div><div class="card">${type==="rest"?'<div class="small">今天安排恢复。可散步、轻度活动和睡眠恢复。</div>':PLAN.days[type].warmup.map(x=>`<div style="padding:8px 0">☑ ${x}</div>`).join("")}</div>
+<div class="section">正式训练</div><div class="card">${ex.map(e=>{let all=[...Array(e[1])].every((_,i)=>l.sets[e[0]+"-"+i]);return `<div class="exercise ${all?"done":""}"><div class="row"><div><div class="title">${e[0]}</div><div class="meta">${e[1]}组 · ${e[2]}–${e[3]}次 · 休息 ${e[4]}</div></div><span class="pill">${all?"完成":"进行中"}</span></div><div class="sets">${[...Array(e[1])].map((_,i)=>`<button class="set ${l.sets[e[0]+"-"+i]?"done":""}" onclick="toggle('${esc(e[0])}',${i})">${i+1}组 ${l.sets[e[0]+"-"+i]?"✓":"○"}</button>`).join("")}</div><div style="margin-top:10px"><span class="small">实际重量</span> <input inputmode="decimal" value="${state.weights[e[0]]||""}" onchange="state.weights['${esc(e[0])}']=this.value;save()" placeholder="kg"></div></div>`}).join("")}</div>
+<div class="section">体态训练</div><div class="card">${type==="rest"?"恢复日无需专项训练":PLAN.days[type].posture.map(x=>`<div style="padding:8px 0">☐ ${x}</div>`).join("")}</div>
+<div class="section">训练后拉伸</div><div class="card">${type==="rest"?"轻度活动即可":PLAN.days[type].stretch.map(x=>`<div style="padding:8px 0">☐ ${x}</div>`).join("")}</div>
+<div class="card"><div class="small">组间休息</div><div id="timer" class="timer">01:30</div><button class="primary" onclick="timer(90)">开始90秒休息</button><button class="primary" style="margin-top:8px;background:#e5e7eb;color:#111827" onclick="if(confirm('确定清除今天打卡？')){delete state.logs[dateKey()];save()}">重置今日训练</button></div>${nav("today")}`
+}
+function renderPlan(){
+document.getElementById("app").innerHTML=`<header><div class="sub">12周训练计划</div><h1>三分化循环</h1><div class="sub">推 → 腿 → 拉 → 休息 → 循环</div></header>${["push","legs","pull"].map(t=>`<div class="section">${PLAN.days[t].name}</div><div class="card">${PLAN.days[t].exercises.map(e=>`<div class="row" style="padding:10px 0;border-bottom:1px solid #f1f5f9"><span>${e[0]}</span><span class="small">${e[1]}×${e[2]}–${e[3]}</span></div>`).join("")}</div>`).join("")}${nav("plan")}`
+}
+function renderStats(){
+let logs=Object.values(state.logs),days=logs.length,groups=logs.reduce((a,l)=>a+Object.values(l.sets||{}).filter(Boolean).length,0);
+document.getElementById("app").innerHTML=`<header><div class="sub">训练数据</div><h1>我的进步</h1></header><div class="card"><div class="row"><div><div class="small">训练天数</div><div class="stat">${days}</div></div><div><div class="small">完成组数</div><div class="stat">${groups}</div></div></div></div><div class="section">动作重量</div><div class="card">${Object.entries(state.weights).length?Object.entries(state.weights).map(([k,v])=>`<div class="row" style="padding:10px 0"><span>${k}</span><b>${v} kg</b></div>`).join(""):'<div class="small">完成动作后填写实际重量，这里会自动建立你的训练记录。</div>'}</div>${nav("stats")}`
+}
+function render(){if(state.tab==="plan")renderPlan();else if(state.tab==="stats")renderStats();else renderToday()}render();
+</script><script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+</script></body></html>
